@@ -5,14 +5,14 @@ import * as Figma from "figma-api";
 import axios from "axios";
 
 dotenv.config();
-const { token, fileId, port, bot, admin } = process.env;
+const { TOKEN, FILE, PORT, BOT, ADMIN } = process.env;
 
-if (!token || !fileId || !port || !bot || !admin) {
+if (!TOKEN || !FILE || !PORT || !BOT || !ADMIN) {
   console.error("\x1b[31mEnvironment Variables not set.\x1b[0m");
   process.exit(1);
 }
 
-const api = new Figma.Api({ personalAccessToken: token });
+const api = new Figma.Api({ personalAccessToken: TOKEN });
 const app = express();
 
 const chunkSize = 580;
@@ -56,7 +56,7 @@ const download = async (url: string): Promise<string> => {
 (async () => {
   console.log(`Get File`);
 
-  const { components } = await api.getFile(fileId, { ids: [`0:1`] });
+  const { components } = await api.getFile(FILE, { ids: [`0:1`] });
   const ids = Object.keys(components);
 
   console.log(`Get Image`);
@@ -66,7 +66,7 @@ const download = async (url: string): Promise<string> => {
     Object.assign(
       urls,
       (
-        await api.getImage(fileId, {
+        await api.getImage(FILE, {
           ids: ids.slice(i, i + chunkSize).join(`,`),
           format: `svg`,
           scale: 1,
@@ -95,12 +95,12 @@ const download = async (url: string): Promise<string> => {
 
   app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
     await axios.get(
-      `https://api.telegram.org/bot${bot}/sendMessage?chat_id=${admin}&text=${bug}`
+      `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
     );
     res.json({ message: `Report sent! Thank You` });
   });
 
-  app.listen(port, () => {
-    console.log(`Server started at \x1b[36mhttp://localhost:${port}\x1b[0m`);
+  app.listen(PORT, () => {
+    console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
   });
 })();
