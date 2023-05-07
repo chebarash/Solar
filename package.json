@@ -1,0 +1,42 @@
+{
+  "name": "solar",
+  "version": "1.0.0",
+  "description": "Solar Plugin backend",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "node ./dist/index.js",
+    "build": "tsc"
+  },
+  "keywords": [
+    "solar",
+    "icons",
+    "set",
+    "plugin",
+    "backend",
+    "typescript"
+  ],
+  "author": "chebarash (https://github.com/chebarash)",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chebarash/Solar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chebarash/Solar/issues"
+  },
+  "homepage": "https://github.com/chebarash/Solar#readme",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "figma-api": "^1.11.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.1.0",
+    "typescript": "^5.0.4"
+  }
+}
