@@ -5,7 +5,7 @@ import * as Figma from "figma-api";
 import axios from "axios";
 
 dotenv.config();
-const { TOKEN, FILE, PORT, BOT, ADMIN } = process.env;
+const { TOKEN, FILE, PORT, BOT, ADMIN, NODE_ENV } = process.env;
 
 if (!TOKEN || !FILE || !PORT || !BOT || !ADMIN) {
   console.error("\x1b[31mEnvironment Variables not set.\x1b[0m");
@@ -30,6 +30,7 @@ const urls: { [id: string]: string } = {};
 let loaded = 0;
 
 const progress = (total: number, stat: number) => {
+  if (NODE_ENV === `production`) return;
   process.stderr.cursorTo(0);
   if (stat / total >= 1) return process.stderr.clearLine(0);
   const width = process.stderr.columns;
