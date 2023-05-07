@@ -1,11 +1,13 @@
-FROM node:latest
+FROM node:16
 
-WORKDIR .
+WORKDIR /app
 
-RUN npm install
+COPY ["package.json", "package-lock.json*", "./"]
+
+RUN npm install --production
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 8080
 
-CMD [ "npm", "start" ]
+CMD [ "node", "dist/index.js" ]
