@@ -90,18 +90,20 @@ const download = async (url: string): Promise<string> => {
     })
   );
 
-  app.use(cors());
-
-  app.get("/", (_req, res: Response) => res.json(icons));
-
-  app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
-    await axios.get(
-      `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
-    );
-    res.json({ message: `Report sent! Thank You` });
-  });
-
-  app.listen(PORT, () => {
-    console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
-  });
+  console.log(`Loaded`);
 })();
+
+app.use(cors());
+
+app.get("/", (_req, res: Response) => res.json(icons));
+
+app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
+  await axios.get(
+    `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
+  );
+  res.json({ message: `Report sent! Thank You` });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
+});
