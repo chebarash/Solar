@@ -3,6 +3,9 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import * as Figma from "figma-api";
 import axios from "axios";
+import fs from "fs";
+
+import icons from "./icons";
 
 dotenv.config();
 const { TOKEN, FILE, PORT, BOT, ADMIN, NODE_ENV } = process.env;
@@ -17,20 +20,11 @@ const app = express();
 
 const chunkSize = 580;
 
-const icons: {
-  [category: string]: {
-    [name: string]: {
-      [style: string]: string;
-    };
-  };
-} = {};
-
 const urls: { [id: string]: string } = {};
 
 let loaded = 0;
 
 const progress = (total: number, stat: number) => {
-  if (NODE_ENV === `production`) return;
   process.stderr.cursorTo(0);
   if (stat / total >= 1) return process.stderr.clearLine(0);
   const width = process.stderr.columns;
@@ -55,55 +49,71 @@ const download = async (url: string): Promise<string> => {
 };
 
 (async () => {
-  console.log(`Get File`);
+  if (NODE_ENV !== `production`) {
+    const icons: {
+      [category: string]: {
+        [name: string]: {
+          [style: string]: string;
+        };
+      };
+    } = {};
 
-  const { components } = await api.getFile(FILE, { ids: [`0:1`] });
-  const ids = Object.keys(components);
+    console.log(`Get File`);
 
-  console.log(`Get Image`);
+    const { components } = await api.getFile(FILE, { ids: [`0:1`] });
+    const ids = Object.keys(components);
 
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    progress(ids.length, i + chunkSize);
-    Object.assign(
-      urls,
-      (
-        await api.getImage(FILE, {
-          ids: ids.slice(i, i + chunkSize).join(`,`),
-          format: `svg`,
-          scale: 1,
-        })
-      ).images
+    console.log(`Get Image`);
+
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      progress(ids.length, i + chunkSize);
+      Object.assign(
+        urls,
+        (
+          await api.getImage(FILE, {
+            ids: ids.slice(i, i + chunkSize).join(`,`),
+            format: `svg`,
+            scale: 1,
+          })
+        ).images
+      );
+    }
+
+    console.log(`Downloading`);
+
+    progress(Object.keys(urls).length, 0);
+    await Promise.all(
+      ids.map(async (id) => {
+        const [style, category, name]: Array<string> = components[id].name
+          .split(` / `)
+          .map((s) => s.replace(/  /, ` `).trim());
+        if (!icons[category]) icons[category] = {};
+        if (!icons[category][name]) icons[category][name] = {};
+        return (icons[category][name][style] = await download(urls[id]));
+      })
     );
+
+    fs.writeFileSync(
+      "./icons.ts",
+      `const icons: { [category: string]: { [name: string]: { [style: string]: string; }; } } = ${JSON.stringify(
+        icons
+      )}; export default icons;`
+    );
+    console.log(`Loaded`);
   }
 
-  console.log(`Downloading`);
+  app.use(cors());
 
-  progress(Object.keys(urls).length, 0);
-  await Promise.all(
-    ids.map(async (id) => {
-      const [style, category, name]: Array<string> = components[id].name
-        .split(` / `)
-        .map((s) => s.replace(/  /, ` `).trim());
-      if (!icons[category]) icons[category] = {};
-      if (!icons[category][name]) icons[category][name] = {};
-      return (icons[category][name][style] = await download(urls[id]));
-    })
-  );
+  app.get("/", (_req, res: Response) => res.json(icons));
 
-  console.log(`Loaded`);
+  app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
+    await axios.get(
+      `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
+    );
+    res.json({ message: `Report sent! Thank You` });
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
+  });
 })();
-
-app.use(cors());
-
-app.get("/", (_req, res: Response) => res.json(icons));
-
-app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
-  await axios.get(
-    `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
-  );
-  res.json({ message: `Report sent! Thank You` });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
-});
