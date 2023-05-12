@@ -8,7 +8,7 @@ import axios from "axios";
 import { IconsType, ImpType, ReqType } from "./types";
 
 dotenv.config();
-const { TOKEN, FILE, PORT, BOT, ADMIN, MONGO } = process.env;
+const { TOKEN, FILE, PORT, BOT, ADMIN, MONGO, NODE_ENV } = process.env;
 
 if (!TOKEN || !FILE || !PORT || !BOT || !ADMIN || !MONGO) {
   console.error("\x1b[31mEnvironment Variables not set.\x1b[0m");
@@ -36,14 +36,6 @@ const Imp = model<ImpType>("imp", ImpSchema);
 let ico: IconsType;
 
 const progress = (total: number, stat: number) => {
-  if (
-    !process ||
-    !process.stderr ||
-    !process.stderr.cursorTo ||
-    !process.stderr.write ||
-    !process.stderr.clearLine
-  )
-    return;
   process.stderr.cursorTo(0);
   if (stat / total >= 1) return process.stderr.clearLine(0);
   const width = process.stderr.columns;
@@ -69,74 +61,78 @@ const download = async (url: string): Promise<string> => {
 
 (async () => {
   await connect(MONGO);
-  const icons: IconsType = {};
 
-  console.log(`Get File`);
+  if (NODE_ENV !== `production`) {
+    const icons: IconsType = {};
 
-  const { components } = await api.getFile(FILE, { ids: [`0:1`] });
-  const ids = Object.keys(components);
+    console.log(`Get File`);
 
-  console.log(`Get Image`);
+    const { components } = await api.getFile(FILE, { ids: [`0:1`] });
+    const ids = Object.keys(components);
 
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    progress(ids.length, i + chunkSize);
-    Object.assign(
-      urls,
-      (
-        await api.getImage(FILE, {
-          ids: ids.slice(i, i + chunkSize).join(`,`),
-          format: `svg`,
-          scale: 1,
-        })
-      ).images
+    console.log(`Get Image`);
+
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      progress(ids.length, i + chunkSize);
+      Object.assign(
+        urls,
+        (
+          await api.getImage(FILE, {
+            ids: ids.slice(i, i + chunkSize).join(`,`),
+            format: `svg`,
+            scale: 1,
+          })
+        ).images
+      );
+    }
+
+    console.log(`Downloading`);
+
+    progress(Object.keys(urls).length, 0);
+    await Promise.all(
+      ids.map(async (id) => {
+        const [style, category, name]: Array<string> = components[id].name
+          .split(` / `)
+          .map((s) => s.replace(/  /, ` `).trim());
+        if (!icons[category]) icons[category] = {};
+        if (!icons[category][name]) icons[category][name] = {};
+        return (icons[category][name][style] = await download(urls[id]));
+      })
     );
+
+    ico = icons;
+    await Icons.deleteMany({});
+    await new Icons({ icons }).save();
+
+    console.log(`Saved`);
   }
 
-  console.log(`Downloading`);
+  app.use(cors());
 
-  progress(Object.keys(urls).length, 0);
-  await Promise.all(
-    ids.map(async (id) => {
-      const [style, category, name]: Array<string> = components[id].name
-        .split(` / `)
-        .map((s) => s.replace(/  /, ` `).trim());
-      if (!icons[category]) icons[category] = {};
-      if (!icons[category][name]) icons[category][name] = {};
-      return (icons[category][name][style] = await download(urls[id]));
-    })
-  );
+  app.get("/", async (_req, res: Response) => {
+    const start = performance.now();
+    if (!ico) {
+      const data = await Icons.findOne({});
+      if (data) ico = data.icons;
+    }
+    if (!ico) return res.status(400).json({ message: `Try again later` });
+    res.json(ico);
+    await new Req({ date: Date.now(), time: performance.now() - start }).save();
+  });
 
-  ico = icons;
-  await new Icons({ icons }).save();
+  app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
+    await axios.get(
+      `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
+    );
+    res.json({ message: `Report sent! Thank You` });
+  });
 
-  console.log(`Saved`);
+  app.get("/import", async ({ query: { icons } }: Request, res: Response) => {
+    await new Imp({ date: Date.now(), icons }).save();
+    res.json({ icons });
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
+  });
 })();
-
-app.use(cors());
-
-app.get("/", async (_req, res: Response) => {
-  const start = performance.now();
-  if (!ico) {
-    const data = await Icons.findOne({});
-    if (data) ico = data.icons;
-  }
-  if (!ico) return res.status(400).json({ message: `Try again later` });
-  res.json(ico);
-  await new Req({ date: Date.now(), time: performance.now() - start }).save();
-});
-
-app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
-  await axios.get(
-    `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
-  );
-  res.json({ message: `Report sent! Thank You` });
-});
-
-app.get("/import", async ({ query: { icons } }: Request, res: Response) => {
-  await new Imp({ date: Date.now(), icons }).save();
-  res.json({ icons });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
-});
