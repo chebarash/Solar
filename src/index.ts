@@ -36,7 +36,14 @@ const Imp = model<ImpType>("imp", ImpSchema);
 let ico: IconsType;
 
 const progress = (total: number, stat: number) => {
-  if (!process || !process.stderr) return;
+  if (
+    !process ||
+    !process.stderr ||
+    !process.stderr.cursorTo ||
+    !process.stderr.write ||
+    !process.stderr.clearLine
+  )
+    return;
   process.stderr.cursorTo(0);
   if (stat / total >= 1) return process.stderr.clearLine(0);
   const width = process.stderr.columns;
