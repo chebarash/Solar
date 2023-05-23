@@ -109,13 +109,20 @@ const download = async (url: string): Promise<string> => {
 
   app.use(cors());
 
-  app.get("/", async (_req, res: Response) => {
+  app.get("/", async (_req: Request, res: Response) => {
+    res.send(`Solar Icon Set`);
+  });
+
+  app.get("/data", async (_req, res: Response) => {
     const start = performance.now();
     if (!ico) {
       const data = await Icons.findOne({});
       if (data) ico = data.icons;
     }
-    if (!ico) return res.status(400).json({ message: `Try again later` });
+    if (!ico)
+      return res
+        .status(400)
+        .json({ message: `Sorry, we couldn't run the plugin!` });
     res.json(ico);
     await new Req({ date: Date.now(), time: performance.now() - start }).save();
   });
