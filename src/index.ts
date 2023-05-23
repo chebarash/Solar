@@ -19,6 +19,7 @@ const api = new Figma.Api({ personalAccessToken: TOKEN });
 const app = express();
 
 const chunkSize = 580;
+const lim = 100;
 
 const urls: { [id: string]: string } = {};
 
@@ -47,6 +48,9 @@ const progress = (total: number, stat: number) => {
   process.stderr.write(complete + incomplete);
   process.stderr.clearLine(1);
 };
+
+const toStr = (text: string) =>
+  text.toLocaleLowerCase().replace(/[-_]+/g, "").replace(/ /g, "");
 
 const download = async (url: string): Promise<string> => {
   try {
@@ -113,19 +117,77 @@ const download = async (url: string): Promise<string> => {
     res.send(`Solar Icon Set`);
   });
 
-  app.get("/data", async (_req, res: Response) => {
-    const start = performance.now();
-    if (!ico) {
-      const data = await Icons.findOne({});
-      if (data) ico = data.icons;
+  app.get(
+    "/data",
+    async (
+      {
+        query: { page = `0`, categories = [], search = `` },
+      }: { query: { page: string; categories: Array<string>; search: string } },
+      res: Response
+    ) => {
+      const start = performance.now();
+
+      if (!ico) {
+        const data = await Icons.findOne({});
+        if (data) ico = data.icons;
+      }
+
+      if (!ico)
+        return res
+          .status(400)
+          .json({ message: `Sorry, we couldn't run the plugin!` });
+
+      const pageInt = parseInt(page);
+      const filteredSearch = toStr(search);
+      let num = 0;
+
+      const filteredIcons = Object.entries(ico)
+        .filter(([category]) =>
+          categories.length ? categories.includes(category) : true
+        )
+        .map(([c, n]) => [
+          c,
+          Object.fromEntries(
+            Object.entries(n).filter(([name]) =>
+              filteredSearch.length
+                ? toStr(name).includes(filteredSearch)
+                : true
+            )
+          ),
+        ]);
+
+      const len = filteredIcons
+        .map(([_n, v]) => Object.keys(v).length)
+        .reduce((a, b) => a + b);
+
+      res.json({
+        icons: Object.fromEntries(
+          filteredIcons.map(([c, l]) => {
+            let s = lim * pageInt - num;
+            let e = lim * pageInt - num + lim;
+            if (s < 0) s = 0;
+            if (e < 0) e = 0;
+            const li = Object.fromEntries(Object.entries(l).slice(s, e));
+            num += Object.keys(l).length;
+            return [c, li];
+          })
+        ),
+        categories: Object.keys(ico).map((name) => ({
+          name,
+          icon: Object.values(ico[name])[0],
+          length: Object.values(ico[name]).length,
+        })),
+        search,
+        prev: !!pageInt,
+        next: len > pageInt * lim + lim,
+        len,
+      });
+      await new Req({
+        date: Date.now(),
+        time: performance.now() - start,
+      }).save();
     }
-    if (!ico)
-      return res
-        .status(400)
-        .json({ message: `Sorry, we couldn't run the plugin!` });
-    res.json(ico);
-    await new Req({ date: Date.now(), time: performance.now() - start }).save();
-  });
+  );
 
   app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
     await axios.get(
