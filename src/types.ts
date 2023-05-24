@@ -5,5 +5,5 @@ export type IconsType = {
     };
   };
 };
-export type ReqType = { date: Date; time: number };
+export type ReqType = { date: Date; time: number; cached: boolean };
 export type ImpType = { date: Date; icons: Array<string> };

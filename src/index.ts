@@ -27,7 +27,11 @@ let loaded = 0;
 const IconsSchema = new Schema<{ icons: IconsType }>({ icons: Object });
 const Icons = model<{ icons: IconsType }>("Icons", IconsSchema);
 
-const ReqSchema = new Schema<ReqType>({ date: Date, time: Number });
+const ReqSchema = new Schema<ReqType>({
+  date: Date,
+  time: Number,
+  cached: Boolean,
+});
 const Req = model<ReqType>("req", ReqSchema);
 
 const ImpSchema = new Schema<ImpType>({ date: Date, icons: Array });
@@ -132,6 +136,21 @@ const download = async (url: string): Promise<string> => {
       await new Req({
         date: Date.now(),
         time: performance.now() - start,
+        cached: false,
+      }).save();
+    } catch (e) {
+      console.log(e);
+    }
+  });
+
+  app.get("/load", async (_req, res: Response) => {
+    try {
+      const start = performance.now();
+      res.json({ ok: true });
+      await new Req({
+        date: Date.now(),
+        time: performance.now() - start,
+        cached: true,
       }).save();
     } catch (e) {
       console.log(e);
