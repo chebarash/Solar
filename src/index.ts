@@ -158,9 +158,12 @@ const download = async (url: string): Promise<string> => {
   });
 
   app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
-    await axios.get(
-      `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${bug}`
-    );
+    if (bug)
+      await axios.get(
+        `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${encodeURIComponent(
+          bug as string
+        )}`
+      );
     res.json({ message: `Report sent! Thank You` });
   });
 
