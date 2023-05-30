@@ -157,6 +157,10 @@ const download = async (url: string): Promise<string> => {
     }
   });
 
+  app.get("/analytics", async (_req, res: Response) => {
+    res.json({ imports: await Imp.find(), requests: await Req.find() });
+  });
+
   app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
     if (bug)
       await axios.get(
