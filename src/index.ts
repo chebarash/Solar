@@ -4,6 +4,7 @@ import express, { Request, Response } from "express";
 import { Schema, model, connect } from "mongoose";
 import * as Figma from "figma-api";
 import axios from "axios";
+import zlib from "zlib";
 
 import { IconsType, ImpType, ReqType } from "./types";
 
@@ -37,7 +38,7 @@ const Req = model<ReqType>("req", ReqSchema);
 const ImpSchema = new Schema<ImpType>({ date: Date, icons: Array });
 const Imp = model<ImpType>("imp", ImpSchema);
 
-let ico: IconsType;
+let ico: string;
 
 const progress = (total: number, stat: number) => {
   process.stderr.cursorTo(0);
@@ -62,6 +63,9 @@ const download = async (url: string): Promise<string> => {
     return await download(url);
   }
 };
+
+const deflate = (icons: IconsType) =>
+  zlib.deflateSync(JSON.stringify(icons)).toString(`base64`);
 
 (async () => {
   await connect(MONGO);
@@ -104,7 +108,7 @@ const download = async (url: string): Promise<string> => {
       })
     );
 
-    ico = icons;
+    ico = deflate(icons);
     await Icons.deleteMany({});
     await new Icons({ icons }).save();
 
@@ -113,9 +117,7 @@ const download = async (url: string): Promise<string> => {
 
   app.use(cors());
 
-  app.get("/", async (_req: Request, res: Response) => {
-    res.send(`Solar Icon Set`);
-  });
+  app.use(express.static("public"));
 
   app.get("/data", async (_req, res: Response) => {
     try {
@@ -123,7 +125,7 @@ const download = async (url: string): Promise<string> => {
 
       if (!ico) {
         const data = await Icons.findOne({});
-        if (data) ico = data.icons;
+        if (data) ico = deflate(data.icons);
       }
 
       if (!ico)
@@ -131,7 +133,7 @@ const download = async (url: string): Promise<string> => {
           .status(400)
           .json({ message: `Sorry, we couldn't run the plugin!` });
 
-      res.json(ico);
+      res.send(ico);
 
       await new Req({
         date: Date.now(),
