@@ -9,9 +9,9 @@ import zlib from "zlib";
 import { IconsType, ImpType, ReqType } from "./types";
 
 dotenv.config();
-const { TOKEN, FILE, PORT, BOT, ADMIN, MONGO, NODE_ENV } = process.env;
+const { TOKEN, FILE, APP_PORT, BOT, ADMIN, DB_CONNECTION_STRING } = process.env;
 
-if (!TOKEN || !FILE || !PORT || !BOT || !ADMIN || !MONGO) {
+if (!TOKEN || !FILE || !APP_PORT || !BOT || !ADMIN || !DB_CONNECTION_STRING) {
   console.error("\x1b[31mEnvironment Variables not set.\x1b[0m");
   process.exit(1);
 }
@@ -68,52 +68,50 @@ const deflate = (icons: IconsType) =>
   zlib.deflateSync(JSON.stringify(icons)).toString(`base64`);
 
 (async () => {
-  await connect(MONGO);
+  await connect(DB_CONNECTION_STRING);
 
-  if (NODE_ENV !== `production`) {
-    const icons: IconsType = {};
+  const icons: IconsType = {};
 
-    console.log(`Get File`);
+  console.log(`Get File`);
 
-    const { components } = await api.getFile(FILE, { ids: [`0:1`] });
-    const ids = Object.keys(components);
+  const { components } = await api.getFile(FILE, { ids: [`0:1`] });
+  const ids = Object.keys(components);
 
-    console.log(`Get Image`);
+  console.log(`Get Image`);
 
-    for (let i = 0; i < ids.length; i += chunkSize) {
-      progress(ids.length, i + chunkSize);
-      Object.assign(
-        urls,
-        (
-          await api.getImage(FILE, {
-            ids: ids.slice(i, i + chunkSize).join(`,`),
-            format: `svg`,
-            scale: 1,
-          })
-        ).images
-      );
-    }
-
-    console.log(`Downloading`);
-
-    progress(Object.keys(urls).length, 0);
-    await Promise.all(
-      ids.map(async (id) => {
-        const [style, category, name]: Array<string> = components[id].name
-          .split(` / `)
-          .map((s) => s.replace(/  /, ` `).trim());
-        if (!icons[category]) icons[category] = {};
-        if (!icons[category][name]) icons[category][name] = {};
-        return (icons[category][name][style] = await download(urls[id]));
-      })
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    progress(ids.length, i + chunkSize);
+    Object.assign(
+      urls,
+      (
+        await api.getImage(FILE, {
+          ids: ids.slice(i, i + chunkSize).join(`,`),
+          format: `svg`,
+          scale: 1,
+        })
+      ).images
     );
-
-    ico = deflate(icons);
-    await Icons.deleteMany({});
-    await new Icons({ icons }).save();
-
-    console.log(`Saved`);
   }
+
+  console.log(`Downloading`);
+
+  progress(Object.keys(urls).length, 0);
+  await Promise.all(
+    ids.map(async (id) => {
+      const [style, category, name]: Array<string> = components[id].name
+        .split(` / `)
+        .map((s) => s.replace(/  /, ` `).trim());
+      if (!icons[category]) icons[category] = {};
+      if (!icons[category][name]) icons[category][name] = {};
+      return (icons[category][name][style] = await download(urls[id]));
+    })
+  );
+
+  ico = deflate(icons);
+  await Icons.deleteMany({});
+  await new Icons({ icons }).save();
+
+  console.log(`Saved`);
 
   app.use(cors());
 
@@ -178,7 +176,9 @@ const deflate = (icons: IconsType) =>
     res.json({ icons });
   });
 
-  app.listen(PORT, () => {
-    console.log(`Server started at \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
+  app.listen(APP_PORT, () => {
+    console.log(
+      `Server started at \x1b[36mhttp://localhost:${APP_PORT}\x1b[0m`
+    );
   });
 })();
