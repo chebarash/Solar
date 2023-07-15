@@ -9,7 +9,8 @@ import zlib from "zlib";
 import { IconsType, ImpType, ReqType } from "./types";
 
 dotenv.config();
-const { TOKEN, FILE, APP_PORT, BOT, ADMIN, DB_CONNECTION_STRING } = process.env;
+const { TOKEN, FILE, APP_PORT, BOT, ADMIN, DB_CONNECTION_STRING, NODE_ENV } =
+  process.env;
 
 if (!TOKEN || !FILE || !APP_PORT || !BOT || !ADMIN || !DB_CONNECTION_STRING) {
   console.error("\x1b[31mEnvironment Variables not set.\x1b[0m");
@@ -22,8 +23,6 @@ const app = express();
 const chunkSize = 580;
 
 const urls: { [id: string]: string } = {};
-
-let loaded = 0;
 
 const IconsSchema = new Schema<{ icons: IconsType }>({ icons: Object });
 const Icons = model<{ icons: IconsType }>("Icons", IconsSchema);
@@ -55,10 +54,7 @@ const progress = (total: number, stat: number) => {
 
 const download = async (url: string): Promise<string> => {
   try {
-    const { data } = await axios.get<string>(url);
-    loaded++;
-    progress(Object.keys(urls).length, loaded);
-    return data;
+    return (await axios.get<string>(url)).data;
   } catch (e) {
     return await download(url);
   }
@@ -67,9 +63,7 @@ const download = async (url: string): Promise<string> => {
 const deflate = (icons: IconsType) =>
   zlib.deflateSync(JSON.stringify(icons)).toString(`base64`);
 
-(async () => {
-  await connect(DB_CONNECTION_STRING);
-
+const save = async () => {
   const icons: IconsType = {};
 
   console.log(`Get File`);
@@ -95,23 +89,29 @@ const deflate = (icons: IconsType) =>
 
   console.log(`Downloading`);
 
-  progress(Object.keys(urls).length, 0);
-  await Promise.all(
-    ids.map(async (id) => {
-      const [style, category, name]: Array<string> = components[id].name
-        .split(` / `)
-        .map((s) => s.replace(/  /, ` `).trim());
-      if (!icons[category]) icons[category] = {};
-      if (!icons[category][name]) icons[category][name] = {};
-      return (icons[category][name][style] = await download(urls[id]));
-    })
-  );
+  progress(ids.length, 0);
+
+  for (const id of ids) {
+    const [style, category, name]: Array<string> = components[id].name
+      .split(` / `)
+      .map((s) => s.replace(/  /, ` `).trim());
+    if (!icons[category]) icons[category] = {};
+    if (!icons[category][name]) icons[category][name] = {};
+    icons[category][name][style] = await download(urls[id]);
+    progress(ids.length, ids.indexOf(id));
+  }
 
   ico = deflate(icons);
   await Icons.deleteMany({});
   await new Icons({ icons }).save();
 
   console.log(`Saved`);
+};
+
+(async () => {
+  await connect(DB_CONNECTION_STRING);
+
+  if (NODE_ENV !== `production`) await save();
 
   app.use(cors());
 
