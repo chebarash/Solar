@@ -4,7 +4,6 @@ import express, { Request, Response } from "express";
 import { Schema, model, connect } from "mongoose";
 import * as Figma from "figma-api";
 import axios from "axios";
-import zlib from "zlib";
 
 import { IconsType, ImpType, ReqType } from "./types";
 
@@ -37,7 +36,8 @@ const Req = model<ReqType>("req", ReqSchema);
 const ImpSchema = new Schema<ImpType>({ date: Date, icons: Array });
 const Imp = model<ImpType>("imp", ImpSchema);
 
-let ico: string;
+let ico: IconsType;
+let loaded = 0;
 
 const progress = (total: number, stat: number) => {
   process.stderr.cursorTo(0);
@@ -54,14 +54,14 @@ const progress = (total: number, stat: number) => {
 
 const download = async (url: string): Promise<string> => {
   try {
-    return (await axios.get<string>(url)).data;
+    const { data } = await axios.get<string>(url);
+    loaded++;
+    progress(Object.keys(urls).length, loaded);
+    return data;
   } catch (e) {
     return await download(url);
   }
 };
-
-const deflate = (icons: IconsType) =>
-  zlib.deflateSync(JSON.stringify(icons)).toString(`base64`);
 
 const save = async () => {
   const icons: IconsType = {};
@@ -89,19 +89,19 @@ const save = async () => {
 
   console.log(`Downloading`);
 
-  progress(ids.length, 0);
+  progress(Object.keys(urls).length, 0);
+  await Promise.all(
+    ids.map(async (id) => {
+      const [style, category, name]: Array<string> = components[id].name
+        .split(` / `)
+        .map((s) => s.replace(/  /, ` `).trim());
+      if (!icons[category]) icons[category] = {};
+      if (!icons[category][name]) icons[category][name] = {};
+      return (icons[category][name][style] = await download(urls[id]));
+    })
+  );
 
-  for (const id of ids) {
-    const [style, category, name]: Array<string> = components[id].name
-      .split(` / `)
-      .map((s) => s.replace(/  /, ` `).trim());
-    if (!icons[category]) icons[category] = {};
-    if (!icons[category][name]) icons[category][name] = {};
-    icons[category][name][style] = await download(urls[id]);
-    progress(ids.length, ids.indexOf(id));
-  }
-
-  ico = deflate(icons);
+  ico = icons;
   await Icons.deleteMany({});
   await new Icons({ icons }).save();
 
@@ -123,7 +123,7 @@ const save = async () => {
 
       if (!ico) {
         const data = await Icons.findOne({});
-        if (data) ico = deflate(data.icons);
+        if (data) ico = data.icons;
       }
 
       if (!ico)
@@ -131,7 +131,7 @@ const save = async () => {
           .status(400)
           .json({ message: `Sorry, we couldn't run the plugin!` });
 
-      res.send(ico);
+      res.json(ico);
 
       await new Req({
         date: Date.now(),
