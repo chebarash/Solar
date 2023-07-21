@@ -161,6 +161,41 @@ const save = async () => {
     res.json({ imports: await Imp.find(), requests: await Req.find() });
   });
 
+  app.get(
+    "/icon",
+    async (
+      {
+        query: { category, name, style, color, ...d },
+      }: Request<
+        {},
+        {},
+        {},
+        { category: string; name: string; style: string; color?: string }
+      >,
+      res: Response
+    ) => {
+      if (!ico) {
+        const data = await Icons.findOne({});
+        if (data) ico = data.icons;
+      }
+
+      if (!ico)
+        return res
+          .status(400)
+          .json({ message: `Sorry, we couldn't run the plugin!` });
+
+      try {
+        const icon = ico[category][name][style];
+        res
+          .setHeader("content-type", "image/svg+xml")
+          .send(color ? icon.replace(/#1C274C/gi, color) : icon);
+      } catch (e) {
+        res.status(400).json({ message: `No such icon` });
+        console.log(e);
+      }
+    }
+  );
+
   app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
     if (bug)
       await axios.get(
