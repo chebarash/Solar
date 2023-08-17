@@ -117,22 +117,24 @@ const save = async () => {
 
   app.use(express.static("public"));
 
+  app.use(async (_, res, next) => {
+    if (!ico) {
+      const data = await Icons.findOne({});
+      if (data) ico = data.icons;
+    }
+
+    if (!ico)
+      return res
+        .status(400)
+        .json({ message: `Sorry, we couldn't run the plugin!` });
+
+    return next();
+  });
+
   app.get("/data", async (_req, res: Response) => {
     try {
       const start = performance.now();
-
-      if (!ico) {
-        const data = await Icons.findOne({});
-        if (data) ico = data.icons;
-      }
-
-      if (!ico)
-        return res
-          .status(400)
-          .json({ message: `Sorry, we couldn't run the plugin!` });
-
       res.json(ico);
-
       await new Req({
         date: Date.now(),
         time: performance.now() - start,
@@ -161,6 +163,18 @@ const save = async () => {
     res.json({ imports: await Imp.find(), requests: await Req.find() });
   });
 
+  app.get("/icons", async (_, res: Response) => {
+    const data: Array<{ style: string; category: string; name: string }> = [];
+    Object.entries(ico).forEach(([category, icons]) => {
+      Object.entries(icons).forEach(([name, styles]) => {
+        Object.keys(styles).forEach((style) =>
+          data.push({ style, category, name })
+        );
+      });
+    });
+    res.json(data);
+  });
+
   app.get(
     "/icon",
     async (
@@ -174,16 +188,6 @@ const save = async () => {
       >,
       res: Response
     ) => {
-      if (!ico) {
-        const data = await Icons.findOne({});
-        if (data) ico = data.icons;
-      }
-
-      if (!ico)
-        return res
-          .status(400)
-          .json({ message: `Sorry, we couldn't run the plugin!` });
-
       try {
         const icon = ico[category][name][style];
         res
@@ -196,15 +200,21 @@ const save = async () => {
     }
   );
 
-  app.get("/report", async ({ query: { bug } }: Request, res: Response) => {
-    if (bug)
-      await axios.get(
-        `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${encodeURIComponent(
-          bug as string
-        )}`
-      );
-    res.json({ message: `Report sent! Thank You` });
-  });
+  app.get(
+    "/report",
+    async (
+      { query: { bug } }: Request<{}, {}, {}, { bug: string }>,
+      res: Response
+    ) => {
+      if (bug)
+        await axios.get(
+          `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${encodeURIComponent(
+            bug
+          )}`
+        );
+      res.json({ message: `Report sent! Thank You` });
+    }
+  );
 
   app.get("/import", async ({ query: { icons } }: Request, res: Response) => {
     await new Imp({ date: Date.now(), icons }).save();
