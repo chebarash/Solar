@@ -16,3 +16,5 @@ export type IconReqType = {
   style: string;
   color?: string;
 };
+
+export type TopType = { [name: string]: number };
