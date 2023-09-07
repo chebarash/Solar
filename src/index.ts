@@ -32,6 +32,10 @@ app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
 app.use(express.static(`public`));
 
+app.post(`/${BOT}`, update);
+app.get(`/report`, report);
+app.get(`/analytics`, analytics);
+
 app.use(async (req, res, next) => {
   if (!ico) {
     const data = await Icons.findOne();
@@ -51,10 +55,6 @@ app.get(`/data`, load(true));
 app.get(`/load`, load());
 app.get(`/import`, imp);
 app.get(`/icon`, icon);
-app.get(`/report`, report);
-app.get(`/analytics`, analytics);
-
-app.post(`/${BOT}`, update);
 
 (async () => {
   await connect(DB_CONNECTION_STRING);
