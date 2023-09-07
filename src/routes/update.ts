@@ -3,11 +3,12 @@ import Icons from "../models/icons";
 import { IconsType } from "../types/types";
 
 const update = async (
-  { body: icons }: Request<{}, {}, IconsType>,
+  { body: icons, updIco }: Request<{}, {}, IconsType>,
   res: Response
 ) => {
   await Icons.deleteMany({});
   await new Icons({ icons }).save();
+  updIco(icons);
   res.json({ ok: true });
 };
 

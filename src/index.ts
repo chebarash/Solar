@@ -48,6 +48,8 @@ app.use(async (req, res, next) => {
       .json({ message: `Sorry, we couldn't run the plugin!` });
 
   req.ico = ico;
+  req.updIco = (icons) => (ico = icons);
+
   return next();
 });
 
