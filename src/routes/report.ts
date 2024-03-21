@@ -1,21 +1,23 @@
-import axios from "axios";
+import https from "https";
 import { Request, Response } from "express";
 
-const { BOT, ADMIN } = process.env;
+const report =
+  (BOT: string, ADMIN: string) =>
+  async (
+    { query: { bug } }: Request<{}, {}, {}, { bug: string }>,
+    res: Response
+  ) => {
+    if (!bug) return res.status(400).json({ message: `Bug required` });
 
-const report = async (
-  { query: { bug } }: Request<{}, {}, {}, { bug: string }>,
-  res: Response
-) => {
-  if (!bug) return res.status(400).json({ message: `Bug required` });
-
-  await axios.get(
-    `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${encodeURIComponent(
-      bug
-    )}`
-  );
-
-  res.json({ message: `Report sent! Thank You` });
-};
+    https
+      .get(
+        `https://api.telegram.org/bot${BOT}/sendMessage?chat_id=${ADMIN}&text=${encodeURIComponent(
+          bug
+        )}`,
+        (resp) =>
+          resp.on("end", () => res.json({ message: `Report sent! Thank You` }))
+      )
+      .on("error", (err) => console.log("Error: " + err.message));
+  };
 
 export default report;
