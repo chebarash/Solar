@@ -11,6 +11,7 @@ import load from "./routes/load";
 import report from "./routes/report";
 import imp from "./routes/import";
 import analytics from "./routes/analytics";
+import icon from "./routes/icon";
 
 dotenv.config();
 const { APP_PORT, BOT, ADMIN, DB_CONNECTION_STRING } = process.env;
@@ -49,6 +50,7 @@ app.use(async (req, res, next) => {
 app.get(`/data`, load(true));
 app.get(`/load`, load());
 app.get(`/import`, imp);
+app.get(`/icon`, icon);
 
 (async () => {
   await connect(DB_CONNECTION_STRING);
