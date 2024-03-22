@@ -10,7 +10,7 @@ const load = (data?: boolean) => async (req: Request, res: Response) => {
     await new Req({
       date: Date.now(),
       time: performance.now() - start,
-      cached: false,
+      cached: !data,
     }).save();
   } catch (e) {
     console.log(e);
