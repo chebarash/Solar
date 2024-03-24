@@ -16,7 +16,7 @@ jobs:
   # This workflow contains multiple jobs
   build_test:
     # The type of runner that the job will run on
-    runs-on: aerspeek
+    runs-on: self-hosted
     strategy:
       matrix:
         node-version: [20.x]
