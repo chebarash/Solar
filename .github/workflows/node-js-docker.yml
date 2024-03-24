@@ -17,6 +17,11 @@ jobs:
   build_test:
     # The type of runner that the job will run on
     runs-on: self-hosted
+    env:
+      APP_PORT: ${{ secrets.APP_PORT }}
+      BOT: ${{ secrets.BOT }}
+      ADMIN: ${{ secrets.ADMIN }}
+      DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
     
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -32,11 +37,6 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-        env:
-          APP_PORT: ${{ secrets.APP_PORT }}
-          BOT: ${{ secrets.BOT }}
-          ADMIN: ${{ secrets.ADMIN }}
-          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
 
       - name: Stop and Remove existing container
         run: |
