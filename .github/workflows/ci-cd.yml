@@ -23,10 +23,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: "Create env file"
+      - name: Create .env file
         run: |
           touch .env
-          echo "APP_PORT=${{ secrets.APP_PORT }}\nBOT=${{ secrets.BOT }}\nADMIN=${{ secrets.ADMIN }}\nDB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" > .env
+          echo "APP_PORT=${{ secrets.APP_PORT }}" > .env
+          echo "BOT=${{ secrets.BOT }}" >> .env
+          echo "ADMIN=${{ secrets.ADMIN }}" >> .env
+          echo "DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" >> .env
 
       - name: Stop and Remove existing container
         run: |
