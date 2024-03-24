@@ -36,6 +36,16 @@ jobs:
         run: |
           npm install
 
+      - name: "Create env file"
+        run: |
+          touch .env
+          echo APP_PORT=${{ secrets.APP_PORT }} >> .env
+          echo BOT=${{ secrets.BOT }} >> .env
+          echo ADMIN=${{ secrets.ADMIN }} >> .env
+          echo DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }} >> .env
+          echo NODE_ENV=${{ secrets.NODE_ENV }} >> .env
+          cat .env
+
       # build and test the apps
       - name: build
         run: |
