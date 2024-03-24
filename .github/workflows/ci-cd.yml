@@ -1,0 +1,40 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@master
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: "Create env file"
+        run: |
+          touch .env
+          echo "${{ secrets.APP_PORT }}\n${{ secrets.BOT }}\n${{ secrets.ADMIN }}\n${{ secrets.DB_CONNECTION_STRING }}" > .env
+
+      - name: Stop and Remove existing container
+        run: |
+          docker stop SolarBackend || true
+          docker rm SolarBackend || true
+
+      - name: Build Docker Image
+        run: docker build -t aerscs/solar-backend-docker:latest  .
+
+      - name: Run Docker container
+        run: docker run -d --restart unless-stopped -p 3000:${{ secrets.APP_PORT }} --name SolarBackend aerscs/solar-backend-docker:latest
