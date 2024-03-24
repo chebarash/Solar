@@ -46,7 +46,7 @@ jobs:
       - name: build
         run: |
           docker build -t aerscs/solar-backend-docker .
-          docker run -d -p 3000:3000 aerscs/solar-backend-docker
+          docker run -d --restart unless-stopped -p 3000:3000 aerscs/solar-backend-docker
 
   # push_to_Docker_Hub:
   #   # The type of runner that the job will run on
