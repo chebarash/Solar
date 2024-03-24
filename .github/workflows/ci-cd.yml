@@ -26,7 +26,7 @@ jobs:
       - name: "Create env file"
         run: |
           touch .env
-          echo "${{ secrets.APP_PORT }}\n${{ secrets.BOT }}\n${{ secrets.ADMIN }}\n${{ secrets.DB_CONNECTION_STRING }}" > .env
+          echo "APP_PORT=${{ secrets.APP_PORT }}\nBOT=${{ secrets.BOT }}\nADMIN=${{ secrets.ADMIN }}\nDB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}" > .env
 
       - name: Stop and Remove existing container
         run: |
