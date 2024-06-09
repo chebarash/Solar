@@ -37,7 +37,7 @@ jobs:
           docker rm SolarBackend || true
 
       - name: Build Docker Image
-        run: docker build -t aerscs/solar-backend-docker:latest  .
+        run: docker build -t luminteam/solar-backend:latest  .
 
       - name: Run Docker container
-        run: docker run -d --restart unless-stopped -p 3000:${{ secrets.APP_PORT }} --name SolarBackend aerscs/solar-backend-docker:latest
+        run: docker run -d --restart unless-stopped -p 3001:${{ secrets.APP_PORT }} --name SolarBackend luminteam/solar-backend:latest
